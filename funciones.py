@@ -1,73 +1,57 @@
-#!/usr/bin/python3
-import os
-import time
 import getpass
+import os
 import colorama
-
-colorama.init()
-
-func = True
-separador = "*------------------------------*"
-salasNetLabs = []
-contraseña = "1234"
+import mysql.connector
 
 
-class salas:
-
-    def __init__(self, nombre, maxCap, ocup):
+class Sala:
+    def __init__(self, id, nombre, maxCap, ocup):
+        self.id = id
         self.nombre = nombre
         self.capacidad = maxCap
         self.ocupados = ocup
 
-def actualizarTxt():
-    with open('/home/user/Desktop/Sprint1/Proyecto1/Salas.txt', 'w') as Archivo:
-        for sala in salasNetLabs:
-            Archivo.write((sala.nombre + "-" + str(sala.capacidad) + "-" + str(sala.ocupados) + '\n'))
-
-with open('/home/user/Desktop/Sprint1/Proyecto1/Salas.txt', 'r') as Archivo:
-    salasTxt = Archivo.read()
-
-lineas = salasTxt.rstrip('\n').split('\n')
-for linea in lineas:
-    aux = linea.split('-')
-    sala = salas(aux[0],int(aux[1]),int(aux[2]))
-    salasNetLabs.append(sala)
-
-
-def opciones():
-    os.system("clear")
-    print(separador)
-    print("1. Mostrar salas y capacidad. \n2. Ingresar a sala. \n3. Retirarse de sala. \n4. Agregar sala(admin). \n5. Eliminar sala(admin). \n6. Cambiar contraseña admin. \n7. Salir.")
+base = mysql.connector.connect(host="127.0.0.1", user="root", password="123456", database="SalasNetLabs")
+cursor = base.cursor()
+base.autocommit = True
 
 
 def mostrarSalas():
-    for sala in salasNetLabs:
-        percent = int(100 * sala.ocupados / sala.capacidad)
+    cursor.execute("SELECT * FROM salas;")
+    salas = cursor.fetchall()
+    for sala in salas:
+        percent = int(100 * sala[3] / sala[2])
         barra = ("║" + str('▓'*int(percent*0.15)) + str('░'*int(15-percent*0.15)) + "║")
 
         if (percent == 100):
-            print("Sala ", sala.nombre,", capacidad: ", sala.ocupados, "/", sala.capacidad, " -", colorama.Fore.RED, barra, " ", percent, "%", colorama.Fore.RESET)
+            print("Sala ", sala[1],", capacidad: ", sala[3], "/", sala[2], " -", colorama.Fore.RED, barra, " ", percent, "%", colorama.Fore.RESET)
         elif (percent > 74):
-            print("Sala ", sala.nombre,", capacidad: ", sala.ocupados, "/", sala.capacidad, " -", colorama.Fore.YELLOW, barra, " ", percent, "%", colorama.Fore.RESET)
+            print("Sala ", sala[1],", capacidad: ", sala[3], "/", sala[2], " -", colorama.Fore.YELLOW, barra, " ", percent, "%", colorama.Fore.RESET)
         else:
-            print("Sala ", sala.nombre,", capacidad: ", sala.ocupados, "/", sala.capacidad, " -", colorama.Fore.GREEN, barra, " ", percent, "%", colorama.Fore.RESET)
+            print("Sala ", sala[1],", capacidad: ", sala[3], "/", sala[2], " -", colorama.Fore.GREEN, barra, " ", percent, "%", colorama.Fore.RESET)
         
     input("Toque 'Enter' para volver.")
 
 
 def ingresoASala():
     ok = True
+    salasNetLabs = []
+    cursor.execute("SELECT * FROM salas;")
+    filas = cursor.fetchall()
+    for fila in filas:
+        sala = Sala(fila[0], fila[1], fila[2], fila[3])
+        salasNetLabs.append(sala)
     for sala in salasNetLabs:
-        indice = str(salasNetLabs.index(sala) + 1)
-        print(indice + ". " + sala.nombre + " - " + str(sala.ocupados) + "/" + str(sala.capacidad))
+        indice = salasNetLabs.index(sala) + 1
+        print(str(indice) + ". " + sala.nombre + " - " + str(sala.ocupados) + "/" + str(sala.capacidad))
     while (ok):
         opc = input("Ingrese a que sala entrará (Ingrese 'x' para cancelar): ")
-        if (opc <= str(salasNetLabs.__len__()) and opc > '0'):
+        if (opc <= str(salasNetLabs.__len__) and opc > '0'):
             for sala in salasNetLabs:
                 if (opc == str(salasNetLabs.index(sala)+1)):
                     if (sala.ocupados < sala.capacidad):
                         sala.ocupados += 1
-                        actualizarTxt()
+                        cursor.execute("UPDATE salas SET ocupado = ocupado + 1 WHERE id_sala = "+ str(sala.id) +";")
                         print(colorama.Fore.LIGHTBLUE_EX, "Sala " + sala.nombre + " actualizada a " + str(sala.ocupados) + "/" + str(sala.capacidad), colorama.Fore.RESET)
                         ok = False
                     else:
@@ -80,6 +64,12 @@ def ingresoASala():
 
 def retiroDeSala():
     ok = True
+    salasNetLabs = []
+    cursor.execute("SELECT * FROM salas;")
+    filas = cursor.fetchall()
+    for fila in filas:
+        sala = Sala(fila[0], fila[1], fila[2], fila[3])
+        salasNetLabs.append(sala)
     for sala in salasNetLabs:
         indice = str(salasNetLabs.index(sala) + 1)
         print(indice + ". " + sala.nombre + " - " + str(sala.ocupados) + "/" + str(sala.capacidad))
@@ -90,7 +80,7 @@ def retiroDeSala():
                 if (opc == str(salasNetLabs.index(sala)+1)):
                     if (sala.ocupados > 0):
                         sala.ocupados -= 1
-                        actualizarTxt()
+                        cursor.execute("UPDATE salas SET ocupado = ocupado - 1  WHERE id_sala = " + str(sala.id) +";")
                         print(colorama.Fore.LIGHTBLUE_EX, "Sala " + sala.nombre + " actualizada a " + str(sala.ocupados) + "/" + str(sala.capacidad), colorama.Fore.RESET)
                         ok = False
                     else:
@@ -102,20 +92,7 @@ def retiroDeSala():
             print(colorama.Fore.RED, "No existe esa sala.", colorama.Fore.RESET)
 
 def agregarSala():
-    contraOk = True
-    ok = False
-    while (contraOk):
-        psw = getpass.getpass(prompt="Contraseña (Ingrese 'x' para salir): ")
-        os.system("clear")
-        opciones()
-        if (psw == contraseña):
-            contraOk = False
-            ok = True
-        elif (psw == 'x'):
-            print(colorama.Fore.BLUE, "Menú", colorama.Fore.RESET)
-            contraOk = False
-        else:
-            print(colorama.Fore.RED, "Contraseña incorrecta.", colorama.Fore.RESET)
+    ok = True
     while (ok):
         nombreOk = False
         capOk = False
@@ -158,42 +135,32 @@ def agregarSala():
                 bien = True
         
         if (bien):
-            sala = salas(nombre, capacidad, ocupado)
-            salasNetLabs.append(sala)
-            actualizarTxt()
+            cursor.execute("INSERT INTO salas(nombre, capacidad, ocupado) VALUES ('"+ nombre +"', "+ str(capacidad) +", "+ str(ocupado) +");")
             ok = False
             print(colorama.Fore.GREEN, "Sala agregada.", colorama.Fore.RESET)
         else:
             print("No se agregó ninguna sala.")
 
 def eliminarSala():
-    contraOk = True
-    ok = False
-    while (contraOk):
-        psw = getpass.getpass(prompt="Contraseña (Ingrese 'x' para salir): ")
-        os.system("clear")
-        opciones()
-        print(separador)
-        if (psw == contraseña):
-            contraOk = False
-            ok = True
-        elif (psw == 'x'):
-            print(colorama.Fore.BLUE, "Menú", colorama.Fore.RESET)
-            contraOk = False
-        else:
-            print(colorama.Fore.RED, "Contraseña incorrecta.", colorama.Fore.RESET)
+    ok = True
+    salasNetLabs = []
+    cursor.execute("SELECT * FROM salas;")
+    filas = cursor.fetchall()
+    for fila in filas:
+        sala = Sala(fila[0], fila[1], fila[2], fila[3])
+        salasNetLabs.append(sala)
     while (ok):
         for sala in salasNetLabs:
             indice = salasNetLabs.index(sala)+1
-#            print = salasNetLabs.index(sala)
             print(indice, ". ", sala.nombre, ".")
         opc = input("Ingrese que sala eliminará (Ingrese 'x' para cancelar): ")
-        if (opc > '0' and opc < str(salasNetLabs.__len__())):
+        if (opc > '0' and opc <= str(salasNetLabs.__len__)):
             confirma = input(("Confirme si quiere eliminar sala " + salasNetLabs[int(opc)-1].nombre + " ('si'): "))
             if(confirma == "si"):
                 print("Sala ", salasNetLabs[int(opc)-1].nombre, " eliminada.")
+                id = salasNetLabs[int(opc)-1].id
+                cursor.execute("DELETE FROM salas WHERE id_sala = "+ str(id) +";")
                 salasNetLabs.remove(salasNetLabs[int(opc)-1])
-                actualizarTxt()
                 ok = False
             else:
                 print("No se eliminó.")
@@ -203,56 +170,3 @@ def eliminarSala():
             print(colorama.Fore.BLUE, "Menú", colorama.Fore.RESET)
         else:
             print(colorama.Fore.RED, "No existe esa sala.", colorama.Fore.RESET)
-        
-def cambiarPSW():
-    global contraseña
-    ok = True
-    while (ok):
-        actPsw = getpass.getpass(prompt="Ingrese la contraseña actual (Ingrese 'x' para cancelar): ")
-        if (actPsw == contraseña):
-            ok2 = True
-            while (ok2):
-                newPsw = getpass.getpass(prompt="Ingrese nueva contraseña: ")
-                if (newPsw.isspace() or newPsw == ''):
-                    print(colorama.Fore.RED, "La contraseña no puede ser vacía.", colorama.Fore.RESET)
-                else:
-                    contraseña = newPsw
-                    ok2 = False
-                    ok = False
-                    print(colorama.Fore.GREEN, "Contraseña actualizada.", colorama.Fore.RESET)
-        elif (actPsw == 'x'):
-            ok = False
-            print("Menu")   
-        else:
-            print(colorama.Fore.RED, "Contraseña incorrecta.", colorama.Fore.RESET)
-
-
-
-
-while (func):
-    opciones()
-    opc = input("Ingrese una opción: ")
-    print(separador)
-    if (opc == '1'):
-        mostrarSalas()
-    elif (opc == '2'):
-        ingresoASala()
-        time.sleep(1)
-    elif (opc == '3'):
-        retiroDeSala()
-        time.sleep(1)
-    elif (opc == '4'):
-        agregarSala()
-        time.sleep(1)
-    elif (opc == '5'):
-        eliminarSala()
-        time.sleep(1)
-    elif (opc == '6'):
-        cambiarPSW()
-        time.sleep(1)
-    elif (opc == '7'):
-        func = False
-        print("Saliendo")
-        time.sleep(0.5)
-    else:
-        print("Opción incorrecta.")
