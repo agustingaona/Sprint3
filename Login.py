@@ -1,10 +1,9 @@
-import mysql.connector
 import getpass
 import os
 import time
+import socket
+import json
 
-bd = mysql.connector.connect(host="127.0.0.1", user="root", password="123456", database="SalasNetLabs")
-cursor = bd.cursor()
 
 def netseat():
     print(" _   _        _    _____               _   ")
@@ -15,20 +14,30 @@ def netseat():
     print("\_| \_/ \___| \__|\____/  \___| \__,_| \__|")
     print("")
 
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+host = '192.168.1.10'
+port = 8404
+
 ok = True
 while(ok):
     os.system("clear")
     netseat()
     usuario = input("Ingrese su CI: ")
     contraseña = getpass.getpass("Ingrese su contraseña: ")
-    cursor.execute("SELECT id_empleado, admin FROM empleados WHERE ci = '"+usuario+"' AND contraseña = '"+contraseña+"';")
-    datos = cursor.fetchall()
-    if (cursor.rowcount == 0):
+    
+    query = "SELECT id_empleado, admin FROM empleados WHERE ci = '"+usuario+"' AND contraseña = '"+contraseña+"';"
+    query_bytes = query.encode()
+    server.connect((host, port))
+    server.sendall(query_bytes)
+    data_str = server.recv(1024).decode()
+    datos = [[]]
+    datos = json.loads(data_str)
+    if (datos.__len__() < 1):
         print("Usuario o contraseña incorrectos.")
         time.sleep(2)
     elif (datos[0][1] == 1): 
         ok = False
-        os.system("python3 interfazAdmin.py")
+        os.system(f"python3 interfazAdmin.py {datos[0][0]}")
     elif (datos[0][1] == 0):
         ok = False
-        os.system("python3 interfazUsuario.py")
+        os.system(f"python3 interfazUsuario.py {datos[0][0]}")

@@ -1,7 +1,6 @@
-import getpass
-import os
 import colorama
-import mysql.connector
+import socket
+import json
 
 
 class Sala:
@@ -11,14 +10,12 @@ class Sala:
         self.capacidad = maxCap
         self.ocupados = ocup
 
-base = mysql.connector.connect(host="127.0.0.1", user="root", password="123456", database="SalasNetLabs")
-cursor = base.cursor()
-base.autocommit = True
 
-
-def mostrarSalas():
-    cursor.execute("SELECT * FROM salas;")
-    salas = cursor.fetchall()
+def mostrarSalas(server):
+    query_bytes = ("SELECT * FROM salas;").encode()
+    server.sendall(query_bytes)
+    data_str = server.recv(1024).decode()
+    salas = json.loads(data_str)
     for sala in salas:
         percent = int(100 * sala[3] / sala[2])
         barra = ("║" + str('▓'*int(percent*0.15)) + str('░'*int(15-percent*0.15)) + "║")
@@ -33,11 +30,13 @@ def mostrarSalas():
     input("Toque 'Enter' para volver.")
 
 
-def ingresoASala():
+def ingresoASala(server, user):
     ok = True
+    query_bytes = ("SELECT * FROM salas;").encode()
+    server.sendall(query_bytes)
+    data_str = server.recv(1024).decode()
+    filas = json.loads(data_str)
     salasNetLabs = []
-    cursor.execute("SELECT * FROM salas;")
-    filas = cursor.fetchall()
     for fila in filas:
         sala = Sala(fila[0], fila[1], fila[2], fila[3])
         salasNetLabs.append(sala)
@@ -51,8 +50,11 @@ def ingresoASala():
                 if (opc == str(salasNetLabs.index(sala)+1)):
                     if (sala.ocupados < sala.capacidad):
                         sala.ocupados += 1
-                        cursor.execute("UPDATE salas SET ocupado = ocupado + 1 WHERE id_sala = "+ str(sala.id) +";")
+                        query_bytes = ("UPDATE salas SET ocupado = ocupado + 1 WHERE id_sala = "+ str(sala.id) +";").encode()
+                        server.sendall(query_bytes)
                         print(colorama.Fore.LIGHTBLUE_EX, "Sala " + sala.nombre + " actualizada a " + str(sala.ocupados) + "/" + str(sala.capacidad), colorama.Fore.RESET)
+                        query_bytes = ("UPDATE empleados SET id_sala = "+ str(sala.id) +" WHERE id_empleado = "+ str(user) +";").encode()
+                        server.sendall(query_bytes)
                         ok = False
                     else:
                         print(colorama.Fore.YELLOW, "Sala llena, elija otra.", colorama.Fore.RESET)
@@ -62,36 +64,20 @@ def ingresoASala():
         else:
             print(colorama.Fore.RED, "No existe esa sala.", colorama.Fore.RESET)
 
-def retiroDeSala():
-    ok = True
-    salasNetLabs = []
-    cursor.execute("SELECT * FROM salas;")
-    filas = cursor.fetchall()
-    for fila in filas:
-        sala = Sala(fila[0], fila[1], fila[2], fila[3])
-        salasNetLabs.append(sala)
-    for sala in salasNetLabs:
-        indice = str(salasNetLabs.index(sala) + 1)
-        print(indice + ". " + sala.nombre + " - " + str(sala.ocupados) + "/" + str(sala.capacidad))
-    while (ok):
-        opc = input("Ingrese que sala dejará (Ingrese 'x' para cancelar): ")
-        if (opc <= str(salasNetLabs.__len__()) and opc > '0'):
-            for sala in salasNetLabs:
-                if (opc == str(salasNetLabs.index(sala)+1)):
-                    if (sala.ocupados > 0):
-                        sala.ocupados -= 1
-                        cursor.execute("UPDATE salas SET ocupado = ocupado - 1  WHERE id_sala = " + str(sala.id) +";")
-                        print(colorama.Fore.LIGHTBLUE_EX, "Sala " + sala.nombre + " actualizada a " + str(sala.ocupados) + "/" + str(sala.capacidad), colorama.Fore.RESET)
-                        ok = False
-                    else:
-                        print(colorama.Fore.YELLOW, "Sala vacía, no hay nadie que pueda salir.", colorama.Fore.RESET)
-        elif (opc == 'x'):
-            print(colorama.Fore.BLUE, "Menú", colorama.Fore.RESET)
-            ok = False
-        else:
-            print(colorama.Fore.RED, "No existe esa sala.", colorama.Fore.RESET)
+def retiroDeSala(server, user):
+    sala_id = None
+    query_bytes = ("SELECT id_sala FROM empleados WHERE id_empleado = {};".format(user)).encode()
+    server.sendall(query_bytes)
+    dato_str = server.recv(1024).decode()
+    dato = json.loads(dato_str)
+    sala_id = dato[0][0]
+    query_bytes = ("UPDATE salas SET ocupado = ocupado - 1 WHERE id_sala = " + str(sala_id) + ";").encode()
+    server.sendall(query_bytes)
+    query_bytes = ("UPDATE empleados SET id_sala = NULL WHERE id_empleado = " + str(user) + ";").encode()
+    server.sendall(query_bytes)
+    print("Retirado de la sala.")
 
-def agregarSala():
+def agregarSala(server):
     ok = True
     while (ok):
         nombreOk = False
@@ -135,17 +121,20 @@ def agregarSala():
                 bien = True
         
         if (bien):
-            cursor.execute("INSERT INTO salas(nombre, capacidad, ocupado) VALUES ('"+ nombre +"', "+ str(capacidad) +", "+ str(ocupado) +");")
+            query_bytes = ("INSERT INTO salas(nombre, capacidad, ocupado) VALUES ('"+ nombre +"', "+ str(capacidad) +", "+ str(ocupado) +");").encode()
+            server.sendall(query_bytes)
             ok = False
             print(colorama.Fore.GREEN, "Sala agregada.", colorama.Fore.RESET)
         else:
             print("No se agregó ninguna sala.")
 
-def eliminarSala():
+def eliminarSala(server):
     ok = True
     salasNetLabs = []
-    cursor.execute("SELECT * FROM salas;")
-    filas = cursor.fetchall()
+    query_bytes = ("SELECT * FROM salas;").encode()
+    server.sendall(query_bytes)
+    data = server.recv(1024).decode()
+    filas = json.loads(data)
     for fila in filas:
         sala = Sala(fila[0], fila[1], fila[2], fila[3])
         salasNetLabs.append(sala)
@@ -159,7 +148,8 @@ def eliminarSala():
             if(confirma == "si"):
                 print("Sala ", salasNetLabs[int(opc)-1].nombre, " eliminada.")
                 id = salasNetLabs[int(opc)-1].id
-                cursor.execute("DELETE FROM salas WHERE id_sala = "+ str(id) +";")
+                query_bytes = ("DELETE FROM salas WHERE id_sala = "+ str(id) +";").encode()
+                server.sendall(query_bytes)
                 salasNetLabs.remove(salasNetLabs[int(opc)-1])
                 ok = False
             else:
