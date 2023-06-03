@@ -7,7 +7,6 @@ function wifi_detect() {
 
 	if [ "$SSID" == "RedNN" ]; then
 		/home/user/Desktop/Proyecto1/ejecutor.sh
-		echo "en el script" >> ~/Desktop/pruebasisi.txt
 	fi
 }
 

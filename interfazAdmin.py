@@ -9,7 +9,7 @@ import sys
 colorama.init()
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host = '192.168.1.10'
+host = '192.168.100.119'
 port = 8404
 server.connect((host, port))
 server.settimeout(0.25)

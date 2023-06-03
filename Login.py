@@ -15,7 +15,7 @@ def netseat():
     print("")
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-host = '192.168.1.10'
+host = '192.168.100.119'
 port = 8404
 
 ok = True
@@ -24,9 +24,12 @@ while(ok):
     netseat()
     usuario = input("Ingrese su CI: ")
     contraseña = getpass.getpass("Ingrese su contraseña: ")
-    
-    query = "SELECT id_empleado, admin FROM empleados WHERE ci = '"+usuario+"' AND contraseña = '"+contraseña+"';"
-    query_bytes = query.encode()
+    query = {
+        "tipo": "query",
+        "data": "SELECT id_empleado, admin FROM empleados WHERE ci = '"+usuario+"' AND contraseña = '"+contraseña+"';"
+    }
+    query_json = json.dumps(query)
+    query_bytes = query_json.encode()
     server.connect((host, port))
     server.sendall(query_bytes)
     data_str = server.recv(1024).decode()

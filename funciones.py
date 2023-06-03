@@ -12,8 +12,12 @@ class Sala:
 
 
 def mostrarSalas(server):
-    query_bytes = ("SELECT * FROM salas;").encode()
-    server.sendall(query_bytes)
+    query = {
+        "tipo": "query",
+        "data": "SELECT * FROM salas;"
+    }
+    query_json = json.dumps(query)
+    server.sendall(query_json.encode())
     data_str = server.recv(1024).decode()
     salas = json.loads(data_str)
     for sala in salas:
@@ -32,12 +36,16 @@ def mostrarSalas(server):
 
 def ingresoASala(server, user):
     ok = True
-    query_bytes = ("SELECT * FROM salas;").encode()
-    server.sendall(query_bytes)
+    query = {
+        "tipo": "query",
+        "data": "SELECT * FROM salas;"
+    }
+    query_json = json.dumps(query)
+    server.sendall(query_json.encode())
     data_str = server.recv(1024).decode()
     filas = json.loads(data_str)
     salasNetLabs = []
-    for fila in filas:
+    for fila in filas:  
         sala = Sala(fila[0], fila[1], fila[2], fila[3])
         salasNetLabs.append(sala)
     for sala in salasNetLabs:
@@ -50,11 +58,19 @@ def ingresoASala(server, user):
                 if (opc == str(salasNetLabs.index(sala)+1)):
                     if (sala.ocupados < sala.capacidad):
                         sala.ocupados += 1
-                        query_bytes = ("UPDATE salas SET ocupado = ocupado + 1 WHERE id_sala = "+ str(sala.id) +";").encode()
-                        server.sendall(query_bytes)
+                        query = {
+                            "tipo": "query",
+                            "data": "UPDATE salas SET ocupado = ocupado + 1 WHERE id_sala = "+ str(sala.id) +";"
+                        }
+                        query_json = json.dumps(query)
+                        server.sendall(query_json.encode())
                         print(colorama.Fore.LIGHTBLUE_EX, "Sala " + sala.nombre + " actualizada a " + str(sala.ocupados) + "/" + str(sala.capacidad), colorama.Fore.RESET)
-                        query_bytes = ("UPDATE empleados SET id_sala = "+ str(sala.id) +" WHERE id_empleado = "+ str(user) +";").encode()
-                        server.sendall(query_bytes)
+                        query = {
+                            "tipo": "query",
+                            "data": "UPDATE empleados SET id_sala = "+ str(sala.id) +" WHERE id_empleado = "+ str(user) +";"
+                        }
+                        query_json = json.dumps(query)
+                        server.sendall(query_json.encode())
                         ok = False
                     else:
                         print(colorama.Fore.YELLOW, "Sala llena, elija otra.", colorama.Fore.RESET)
@@ -66,15 +82,27 @@ def ingresoASala(server, user):
 
 def retiroDeSala(server, user):
     sala_id = None
-    query_bytes = ("SELECT id_sala FROM empleados WHERE id_empleado = {};".format(user)).encode()
-    server.sendall(query_bytes)
+    query = {
+        "tipo": "query",
+        "data": ("SELECT id_sala FROM empleados WHERE id_empleado = {};".format(user))
+    }
+    query_json = json.dumps(query)
+    server.sendall(query_json.encode())
     dato_str = server.recv(1024).decode()
     dato = json.loads(dato_str)
     sala_id = dato[0][0]
-    query_bytes = ("UPDATE salas SET ocupado = ocupado - 1 WHERE id_sala = " + str(sala_id) + ";").encode()
-    server.sendall(query_bytes)
-    query_bytes = ("UPDATE empleados SET id_sala = NULL WHERE id_empleado = " + str(user) + ";").encode()
-    server.sendall(query_bytes)
+    query = {
+        "tipo": "query",
+        "data": "UPDATE salas SET ocupado = ocupado - 1 WHERE id_sala = " + str(sala_id) + ";"
+    }
+    query_json = json.dumps(query)
+    server.sendall(query_json.encode())
+    query = {
+        "tipo": "query",
+        "data": "UPDATE empleados SET id_sala = NULL WHERE id_empleado = " + str(user) + ";"
+    }
+    query_json = json.dumps(query)
+    server.sendall(query_json.encode())
     print("Retirado de la sala.")
 
 def agregarSala(server):
@@ -121,8 +149,12 @@ def agregarSala(server):
                 bien = True
         
         if (bien):
-            query_bytes = ("INSERT INTO salas(nombre, capacidad, ocupado) VALUES ('"+ nombre +"', "+ str(capacidad) +", "+ str(ocupado) +");").encode()
-            server.sendall(query_bytes)
+            query = {
+                "tipo": "query",
+                "data": "INSERT INTO salas(nombre, capacidad, ocupado) VALUES ('"+ nombre +"', "+ str(capacidad) +", "+ str(ocupado) +");"
+            }
+            query_json = json.dumps(query)
+            server.sendall(query_json.encode())
             ok = False
             print(colorama.Fore.GREEN, "Sala agregada.", colorama.Fore.RESET)
         else:
@@ -131,8 +163,12 @@ def agregarSala(server):
 def eliminarSala(server):
     ok = True
     salasNetLabs = []
-    query_bytes = ("SELECT * FROM salas;").encode()
-    server.sendall(query_bytes)
+    query = {
+        "tipo": "query",
+        "data": "SELECT * FROM salas;"
+    }
+    query_json = json.dumps(query)
+    server.sendall(query_json.encode())
     data = server.recv(1024).decode()
     filas = json.loads(data)
     for fila in filas:
@@ -148,8 +184,12 @@ def eliminarSala(server):
             if(confirma == "si"):
                 print("Sala ", salasNetLabs[int(opc)-1].nombre, " eliminada.")
                 id = salasNetLabs[int(opc)-1].id
-                query_bytes = ("DELETE FROM salas WHERE id_sala = "+ str(id) +";").encode()
-                server.sendall(query_bytes)
+                query = {
+                    "tipo": "query",
+                    "data": "DELETE FROM salas WHERE id_sala = "+ str(id) +";"
+                }
+                query_json = json.dumps(query)
+                server.sendall(query_json.encode())
                 salasNetLabs.remove(salasNetLabs[int(opc)-1])
                 ok = False
             else:
